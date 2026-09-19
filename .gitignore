@@ -1,0 +1,151 @@
+# ============================================================
+# TDL GUI (Tauri v2 + React + TypeScript + Rust) .gitignore
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. 依赖与包管理器缓存
+# ------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+.yarn/cache
+.yarn/install-state.gz
+.pnpm-store/
+.npm/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------
+# 2. 构建产物
+# ------------------------------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+release/
+*.tsbuildinfo
+
+# 前端工具缓存
+.vite/
+.turbo/
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+coverage/
+*.lcov
+.nyc_output/
+
+# ------------------------------------------------------------
+# 3. Rust / Tauri
+# ------------------------------------------------------------
+src-tauri/target/
+target/
+**/*.rs.bk
+*.pdb
+
+# Tauri 自动生成的 schema（可选：若希望保持同步可删除下面一行）
+/src-tauri/gen/schemas/
+
+# 打包用的外部二进制（体积大，且非源码；目录本身保留）
+src-tauri/resources/*.exe
+src-tauri/resources/*.dll
+
+# ------------------------------------------------------------
+# 4. 环境变量 & 敏感信息（密钥 / Token / 证书）
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+
+# 各类密钥与凭证
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa*
+*.pub
+secrets.*
+secrets/
+credentials*
+*api_key*
+*apikey*
+*.token
+auth.json
+.token.json
+
+# Tauri 更新程序签名私钥（泄露可导致签名被伪造）
+src-tauri/*.key
+src-tauri/*.pem
+tauri.key
+
+# ------------------------------------------------------------
+# 5. 本地配置（可能含个人路径 / 账号信息）
+# ------------------------------------------------------------
+config.local.*
+*.local.*
+localConfig.*
+*.user
+*.suo
+*.userosscache
+*.userprefs
+
+# ------------------------------------------------------------
+# 6. 日志与运行时数据
+# ------------------------------------------------------------
+*.log
+logs/
+log/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# tdl 运行产物（下载文件、导出数据，可能包含隐私内容）
+downloads/
+exports/
+export*.json
+
+# 上述 *api_key* / auth.json 等规则的白名单例外（防止误伤同名源码/配置文件）
+!package.json
+!tsconfig*.json
+!vite.config.ts
+
+# ------------------------------------------------------------
+# 7. 编辑器 & IDE
+# ------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.default.json
+.idea/
+*.iml
+*.ipr
+*.iws
+.history/
+*.sublime-workspace
+
+# ------------------------------------------------------------
+# 8. 操作系统文件
+# ------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+
+/temp.md
+/prompt.md
