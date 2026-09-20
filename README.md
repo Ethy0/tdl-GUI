@@ -4,7 +4,7 @@
 
 本项目不重新实现 tdl 的任何功能，只做两件事：把界面表单**拼装成 tdl 命令**，并**运行 `tdl.exe`、实时回显输出**。
 
-> 界面截图：待补充
+> 界面截图：
 > ![下载界面](download_page.png)
 > ![上传界面](upload_page.png)
 > ![导出界面](export_page.png)
