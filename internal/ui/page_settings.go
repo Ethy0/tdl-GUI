@@ -190,7 +190,6 @@ func newSettingsPage(ctx *pageCtx) *settingsPage {
 		newHintColored("· 注意：该窗口中若选择登出桌面会话（logout existing desktop session），tdl 会删除 Telegram Desktop 的会话密钥，须确保你能重新登录该客户端。", colorLogError),
 		newHint("· 若该命名空间已存在登录数据，将被覆盖。"),
 		newHint("· 登录成功后，请在【当前命名空间】中填写该命名空间，其他页面的任务才会使用该账户。"),
-		newHint("· 当前 tdl 版本（0.20.4）不提供列出账户/切换默认/登出命令，故本页不提供这些按钮。"),
 	)
 
 	blockB := widget.NewCard("登录管理", "多账户通过命名空间（-n）实现，每个命名空间即一个独立账户", container.NewVBox(
