@@ -1030,3 +1030,81 @@ func TestAbortBannerSemantics(t *testing.T) {
 		t.Fatalf("中止横幅应标注正在强制终止：%q", raw)
 	}
 }
+
+// overall 排队残行识别（v1.1.0）：
+// 正例取自真实日志 test/out.txt（排队阶段每帧与文件进度行成对出现）；
+// 负例含文件进度行与传输阶段 overall 带速行（后者须保留给 D-16 拒绝路径）。
+func TestIsOverallResidual(t *testing.T) {
+	yes := []string{
+		"[.................................................] [0s]",
+		"[.................................................] [5s]",
+		"[#####............] [1m3s]",
+		"[#########.] [1h2m3s]",
+	}
+	no := []string{
+		"****** ...  0.0% [........] [0 B in 5ms; 0 B/s]",
+		"[############################....................] [1.23 GB in 5m; 2.43 MB/s]",
+		"****** ...  100.0% [#######.] [1.90 GB in 36m5.805s; ~ETA: 22s; 919.13 KB/s]",
+		"Found unfinished download, continue from '8/12'",
+		"退出码：0（正常）",
+		"已解析 3 条链接",
+		"",
+	}
+	for _, s := range yes {
+		if !isOverallResidual(s) {
+			t.Errorf("应识别为 overall 残行：%q", s)
+		}
+	}
+	for _, s := range no {
+		if isOverallResidual(s) {
+			t.Errorf("不应识别为 overall 残行：%q", s)
+		}
+	}
+}
+
+// 排队阶段残行不得触发进度固化堆积（v1.1.0，复现 test/out.txt 第 17–120 行场景）：
+// 文件进度行与 overall 残行交替到达，日志历史应保持为空，仅剩单行临时进度。
+func TestOverallResidualDropped(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+
+	win := a.NewWindow("test")
+	logv := NewLogView(a)
+	defer waitThrottle(logv)
+	ctrl := NewTaskController(win, logv)
+
+	ctrl.onEvent(runner.LineEvent{Text: "****** ...  0.0% [........] [0 B in 5ms; 0 B/s]"})
+	ctrl.onEvent(runner.LineEvent{Text: "[.................................................] [0s]"})
+	ctrl.onEvent(runner.LineEvent{Text: "****** ...  0.0% [........] [0 B in 104ms; 0 B/s]"})
+	ctrl.onEvent(runner.LineEvent{Text: "[.................................................] [0s]"})
+	ctrl.onEvent(runner.LineEvent{Text: "****** ...  0.0% [........] [0 B in 205ms; 0 B/s]"})
+	ctrl.onEvent(runner.LineEvent{Text: "[.................................................] [1s]"})
+
+	// 等待事件被派发处理（uiDo 在测试环境可能异步）。
+	deadline := time.Now().Add(5 * time.Second)
+	var p string
+	for time.Now().Before(deadline) {
+		logv.mu.Lock()
+		p = logv.progress
+		logv.mu.Unlock()
+		if strings.Contains(p, "205ms") {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !strings.Contains(p, "205ms") {
+		t.Fatalf("进度事件未被处理，当前进度 %q", p)
+	}
+
+	if got := logv.Lines(); len(got) != 0 {
+		t.Fatalf("残行不应触发进度固化堆积：%#v", got)
+	}
+	logv.CommitProgress()
+	lines := logv.Lines()
+	if len(lines) != 1 {
+		t.Fatalf("进度应合并为单行：%#v", lines)
+	}
+	if !strings.Contains(lines[0], "205ms") {
+		t.Fatalf("应固化最新文件进度行，实际 %q", lines[0])
+	}
+}

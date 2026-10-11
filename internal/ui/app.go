@@ -75,7 +75,8 @@ type App struct {
 	win     fyne.Window
 	ctx     *pageCtx
 	pages   []*Page
-	navBtns []*widget.Button
+	nav     *navSwitcher // 左侧导航（胶囊滑动指示器，v1.1.0）
+	fades   []*pageFade  // 各页过渡容器
 	current int
 }
 
@@ -108,19 +109,22 @@ func Build(a fyne.App, version string) fyne.Window {
 
 	app := &App{fyneApp: a, win: win, ctx: ctx, pages: pages, current: -1}
 
-	// 左侧导航栏（宽度固定）
-	navBox := container.NewVBox()
-	for i, p := range pages {
-		idx := i
-		b := widget.NewButton(p.Name, func() { app.show(idx) })
-		app.navBtns = append(app.navBtns, b)
-		navBox.Add(container.NewGridWrap(fyne.NewSize(navWidth, 42), b))
+	// 左侧导航（自绘胶囊指示器组件，v1.1.0）
+	names := make([]string, 0, len(pages))
+	for _, p := range pages {
+		names = append(names, p.Name)
 	}
+	app.nav = newNavSwitcher(names, app.show)
+	navBox := container.NewVBox(app.nav)
 
 	// 右侧：上部日志（40%）+ 下部当前页
+	// 每页包一层 pageFade 以支持切换动画（v1.1.0）
+	app.fades = make([]*pageFade, 0, len(pages))
 	views := make([]fyne.CanvasObject, 0, len(pages))
 	for _, p := range pages {
-		views = append(views, p.View)
+		f := newPageFade(p.View)
+		app.fades = append(app.fades, f)
+		views = append(views, f)
 	}
 	stack := container.NewStack(views...)
 	right := container.NewVSplit(logv.CanvasObject(), stack)
@@ -128,11 +132,9 @@ func Build(a fyne.App, version string) fyne.Window {
 
 	win.SetContent(container.NewBorder(nil, nil, navBox, nil, right))
 
-	// 全局锁定集合：导航按钮 + 各页全部可禁用控件
+	// 全局锁定集合：导航（含禁用态）+ 各页全部可禁用控件
 	lockables := make([]fyne.Disableable, 0, 64)
-	for _, b := range app.navBtns {
-		lockables = append(lockables, b)
-	}
+	lockables = append(lockables, app.nav)
 	for _, p := range pages {
 		lockables = append(lockables, p.Controls...)
 	}
@@ -169,6 +171,12 @@ func (a *App) show(i int) {
 	if i < 0 || i >= len(a.pages) {
 		return
 	}
+	if i == a.current {
+		return
+	}
+	prev := a.current
+	a.current = i
+	// 页面可见性同步切换（保持旧语义：测试与逻辑都只看 Show/Hide）
 	for j, p := range a.pages {
 		if j == i {
 			p.View.Show()
@@ -176,18 +184,39 @@ func (a *App) show(i int) {
 			p.View.Hide()
 		}
 	}
-	a.current = i
-	for j, b := range a.navBtns {
-		if j == i {
-			b.Importance = widget.HighImportance
+	if a.nav != nil {
+		if prev < 0 {
+			// 首次启动：胶囊直接落位，不播滑动动画
+			a.nav.SetCurrentInstant(i)
 		} else {
-			b.Importance = widget.MediumImportance
+			// show 也会被 onSelect 回调调用，此时 current 已更新，SetCurrent 为幂等
+			a.nav.SetCurrent(i)
 		}
-		b.Refresh()
 	}
 	if a.pages[i].Refresh != nil {
 		a.pages[i].Refresh()
 	}
+	// 切换动画（纯视觉；首次启动不播）
+	if a.fades != nil {
+		for j, f := range a.fades {
+			if j != i {
+				f.HideInstant()
+			}
+		}
+		if prev < 0 {
+			a.fades[i].ShowInstant()
+		} else {
+			a.fades[i].AnimateIn(slideDir(prev, i)*pageSlideOffset, pageFadeInDuration)
+		}
+	}
+}
+
+// slideDir 返回新页滑入方向：向下切页为 +1（从下方滑入），向上切页为 -1。
+func slideDir(prev, next int) float32 {
+	if next < prev {
+		return -1
+	}
+	return 1
 }
 
 // ---------- 共享辅助 ----------

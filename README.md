@@ -166,14 +166,14 @@ ui ──┬─► cmdgen   拼命令 + 校验
 环境要求：Windows + Go 1.27.1 或更高版本。
 
 ```powershell
-go build -ldflags "-H windowsgui -s -w -X main.version=1.0.0" -o tdl-gui.exe .
+go build -ldflags "-H windowsgui -s -w -X main.version=x.y.z" -o tdl-gui.exe .
 ```
 
 参数说明：
 
 - `-H windowsgui`：以 GUI 子系统启动，不弹出多余的控制台窗口；
 - `-s -w`：去除符号表与调试信息，减小可执行文件体积；
-- `-X main.version=1.0.0`：注入版本号，显示在窗口标题 `tdl-GUI <版本>` 中。
+- `-X main.version=x.y.z`：注入版本号，显示在窗口标题 `tdl-GUI <版本>` 中，具体版本号见`main.go`--version。
 
 运行测试（部分测试会真实启动系统命令，仅 Windows 可用）：
 

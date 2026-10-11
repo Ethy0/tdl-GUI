@@ -31,6 +31,17 @@ var pinnedTelemetryRe = regexp.MustCompile(`CPU:.*Memory:.*Goroutines:`)
 // isPinnedTelemetry 报告文本是否为 tdl 的系统遥测行（非下载进度）。
 func isPinnedTelemetry(text string) bool { return pinnedTelemetryRe.MatchString(text) }
 
+// overallResidualRe 匹配 tdl 进度面板排队阶段的 overall 残行（test/out.txt 实测形态）：
+// 形如 "[.................................................] [5s]"——bar 仅 # 与 .，stats 仅耗时
+// （整秒，随排队时长增长为 1m3s、1h2m3s）。该行不含百分比/速度/ETA，progressLike
+// 不命中而走 AppendLine，触发 commitProgress 把单行进度固化为历史，造成任务开始
+// 阶段日志堆积（v1.1.0）。传输阶段的 overall 行含速度，命中 progressLike 走 D-16
+// 拒绝路径，不在此列。
+var overallResidualRe = regexp.MustCompile(`^\[[.#]+\] \[(?:\d+(?:\.\d+)?(?:ns|µs|us|ms|s|m|h))+\]$`)
+
+// isOverallResidual 报告文本是否为 overall 残行（非下载进度）。
+func isOverallResidual(text string) bool { return overallResidualRe.MatchString(text) }
+
 // TaskController 是任务状态机：
 //
 //	点击开始 → 触发按钮立即变为红色 [中止] + 全部导航/表单控件变灰锁定
@@ -159,6 +170,9 @@ func (c *TaskController) onEvent(ev runner.Event) {
 		if isPinnedTelemetry(e.Text) {
 			return // 丢弃 tdl 系统遥测行（CPU/内存/Goroutines）：非下载进度，不进日志也不进进度行（D-16）
 		}
+		if isOverallResidual(e.Text) {
+			return // 丢弃排队阶段 overall 残行（[bar] [耗时]）：无进度信息，固化会导致堆积（v1.1.0）
+		}
 		if progressLike(e.Text) {
 			uiDo(func() { c.log.UpdateProgress(e.Text) }) // 进度刷新 → 单行就地覆盖（D-14）
 			return
@@ -167,6 +181,9 @@ func (c *TaskController) onEvent(ev runner.Event) {
 	case runner.ProgressEvent:
 		if c.abortAsked.Load() {
 			return
+		}
+		if isOverallResidual(e.Text) {
+			return // \r 来源兜底：残行同样不得触发进度固化（v1.1.0）
 		}
 		uiDo(func() { c.log.UpdateProgress(e.Text) })
 	case runner.ExitEvent:

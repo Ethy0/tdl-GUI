@@ -9,7 +9,7 @@ import (
 )
 
 // version 由构建时注入：-ldflags "-X main.version=x.y.z"
-var version = "1.0.0"
+var version = "1.1.0"
 
 func main() {
 	a := app.NewWithID("tdl-gui")
