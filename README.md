@@ -1,5 +1,7 @@
 # tdl-GUI
 
+[简体中文](README.md) | [English](README_Eng.md)
+
 [tdl](https://github.com/iyear/tdl)（Telegram Downloader）的 **Windows 桌面图形前端**。
 
 本项目不重新实现 tdl 的任何功能，只做两件事：把界面表单**拼装成 tdl 命令**，并**运行 `tdl.exe`、实时回显输出**。
@@ -8,8 +10,6 @@
 > ![下载界面](download_page.png)
 > ![上传界面](upload_page.png)
 > ![导出界面](export_page.png)
-> <!-- 补图后取消下一行注释并替换为实际路径： -->
-> <!-- ![界面截图](doc/screenshot.png) -->
 
 > **平台限制**：仅支持 Windows。程序依赖 `CREATE_NO_WINDOW`、`CREATE_NEW_CONSOLE`、`taskkill` 等 Windows 特性，暂不支持其他平台。
 
