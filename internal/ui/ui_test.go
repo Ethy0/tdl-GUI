@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"tdl-gui/internal/cmdgen"
+	"tdl-gui/internal/i18n"
 	"tdl-gui/internal/runner"
 	"tdl-gui/internal/store"
 )
@@ -321,7 +322,7 @@ func TestDownloadPageCollect(t *testing.T) {
 
 	p.linksEntry.SetText("https://t.me/a/1")
 	p.threadsEntry.SetText("4")
-	p.resumeRadio.SetSelected(resumeLabels[1])
+	p.resumeRadio.SetSelected(resumeLabelOptions()[1])
 	p.serveCheck.SetChecked(true)
 	p.portEntry.SetText("9090")
 
@@ -411,7 +412,7 @@ func TestTaskScopeInputsNotPersisted(t *testing.T) {
 	ep := newExportPage(ctx)
 	ep.chatEntry.SetText("@iyear")
 	ep.rangeEntry.SetText("1,2")
-	ep.typeRadio.SetSelected(exportTypeLabels[2])
+	ep.typeRadio.SetSelected(exportTypeOptions()[2])
 	if got := ctx.st.Str(store.KeyExportChat, ""); got != "" {
 		t.Fatalf("导出目标聊天不应写入持久化，实际 %q", got)
 	}
@@ -445,7 +446,7 @@ func TestDownloadClearList(t *testing.T) {
 	if p.linksEntry.Text != "" {
 		t.Fatalf("消息链接应被清空，实际 %q", p.linksEntry.Text)
 	}
-	if len(p.txtLinks) != 0 || p.txtPathLbl.Text != "未选择文件" || p.txtCountLbl.Text != txtCountHintDefault {
+	if len(p.txtLinks) != 0 || p.txtPathLbl.Text != "未选择文件" || p.txtCountLbl.Text != txtCountHintDefault() {
 		t.Fatalf("txt 导入应被清空：links=%d path=%q hint=%q", len(p.txtLinks), p.txtPathLbl.Text, p.txtCountLbl.Text)
 	}
 	if len(p.jsonFiles) != 0 || p.jsonSel != -1 {
@@ -521,7 +522,7 @@ func TestExportPageValidation(t *testing.T) {
 		t.Fatalf("默认类型占位符应为时间范围，实际 %q", p.rangeEntry.PlaceHolder)
 	}
 
-	p.typeRadio.SetSelected(exportTypeLabels[2])
+	p.typeRadio.SetSelected(exportTypeOptions()[2])
 	if !strings.Contains(p.rangeEntry.PlaceHolder, "数量") {
 		t.Fatalf("切换到 last 后占位符应变化，实际 %q", p.rangeEntry.PlaceHolder)
 	}
@@ -1106,5 +1107,57 @@ func TestOverallResidualDropped(t *testing.T) {
 	}
 	if !strings.Contains(lines[0], "205ms") {
 		t.Fatalf("应固化最新文件进度行，实际 %q", lines[0])
+	}
+}
+
+// TestSettingsLangSelect 设置页语言选择器：默认"跟随系统"、选择后写入 settings.lang、
+// 重建页面（模拟重启）后回显所选语言、且该控件纳入执行期全局锁定集合（v1.2.0）。
+func TestSettingsLangSelect(t *testing.T) {
+	ctx, _ := newTestCtx(t)
+
+	p := newSettingsPage(ctx)
+	i18n.Init(i18n.LangZh, i18n.LangZh) // 源语言：选项文本为中文
+	t.Cleanup(func() { i18n.Init(i18n.LangZh, i18n.LangZh) })
+
+	if p.langSelect == nil {
+		t.Fatal("设置页应含界面语言下拉框")
+	}
+	// 未写入偏好 → 跟随系统（索引 0）
+	if got := ctx.st.Str(store.KeySettingsLang, ""); got != "" {
+		t.Fatalf("默认不应写入语言偏好，实际 %q", got)
+	}
+	if p.langSelect.Selected != "跟随系统" {
+		t.Fatalf("默认应显示「跟随系统」，实际 %q", p.langSelect.Selected)
+	}
+
+	// 选 English（"English" 为母语显示，不参与翻译，故直接可用）
+	p.langSelect.SetSelected("English")
+	if got := ctx.st.Str(store.KeySettingsLang, ""); got != i18n.LangEn {
+		t.Fatalf("选择 English 后应写入 %q，实际 %q", i18n.LangEn, got)
+	}
+
+	// 重启模拟：同一偏好下重建页面，回显 English
+	p2 := newSettingsPage(ctx)
+	if p2.langSelect.Selected != "English" {
+		t.Fatalf("重启后应回显 English，实际 %q", p2.langSelect.Selected)
+	}
+
+	// 选简体中文 → 写入源语言
+	p2.langSelect.SetSelected("简体中文")
+	if got := ctx.st.Str(store.KeySettingsLang, ""); got != i18n.LangZh {
+		t.Fatalf("选择简体中文后应写入 %q，实际 %q", i18n.LangZh, got)
+	}
+
+	// 执行期全局锁定必须覆盖语言下拉框
+	page := p.toPage()
+	found := false
+	for _, c := range page.Controls {
+		if c == fyne.Disableable(p.langSelect) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("语言下拉框应登记到 Page.Controls（执行期需变灰锁定）")
 	}
 }

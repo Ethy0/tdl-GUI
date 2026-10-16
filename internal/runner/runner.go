@@ -6,7 +6,6 @@ package runner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"tdl-gui/internal/i18n"
 )
 
 // CREATE_NO_WINDOW：GUI 进程无控制台，避免子进程闪现黑窗。
@@ -66,7 +67,7 @@ func (r *Runner) Running() bool { return r.running.Load() }
 // Start 启动子进程并异步派发事件。失败（如路径无效）时立即返回错误且不占用运行态。
 func (r *Runner) Start(path string, args []string, onEvent func(Event)) error {
 	if !r.running.CompareAndSwap(false, true) {
-		return errors.New("已有任务正在运行")
+		return errors.New(i18n.T("已有任务正在运行"))
 	}
 
 	cmd := exec.Command(path, args...)
@@ -125,7 +126,7 @@ func (r *Runner) wait(cmd *exec.Cmd, parser *Parser, onEvent func(Event)) {
 // 按钮变形/全局锁定/中止等任务语义与 Start 完全一致。
 func (r *Runner) StartInConsole(path string, args []string, onEvent func(Event)) error {
 	if !r.running.CompareAndSwap(false, true) {
-		return errors.New("已有任务正在运行")
+		return errors.New(i18n.T("已有任务正在运行"))
 	}
 
 	cp, err := startInNewConsole(path, args)
@@ -208,13 +209,13 @@ func (r *Runner) Abort() {
 				if kerr := cmd.Process.Kill(); kerr == nil {
 					ok, detail = true, ""
 				} else {
-					detail = fmt.Sprintf("%s；兜底强杀失败：%v", detail, kerr)
+					detail = detail + "；" + i18n.Tf("兜底强杀失败：{{.err}}", map[string]any{"err": kerr.Error()})
 				}
 			case cp != nil:
 				if kerr := cp.kill(); kerr == nil {
 					ok, detail = true, ""
 				} else {
-					detail = fmt.Sprintf("%s；兜底强杀失败：%v", detail, kerr)
+					detail = detail + "；" + i18n.Tf("兜底强杀失败：{{.err}}", map[string]any{"err": kerr.Error()})
 				}
 			}
 		}
@@ -285,7 +286,7 @@ var killTree = func(pid int) (bool, string) {
 	}
 	var ee *exec.ExitError
 	if errors.As(err, &ee) && ee.ExitCode() == 128 {
-		return true, "进程已不存在"
+		return true, i18n.T("进程已不存在")
 	}
 	msg := strings.TrimSpace(out.String())
 	if msg == "" {

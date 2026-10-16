@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"tdl-gui/internal/i18n"
 )
 
 func TestBuildGlobal(t *testing.T) {
@@ -419,5 +421,76 @@ func TestSuspiciousLinks(t *testing.T) {
 	}
 	if got := SuspiciousLinks([]string{"https://t.me/a/1"}); got != nil {
 		t.Fatalf("全部合法时应返回 nil，实际 %#v", got)
+	}
+}
+
+// TestBuildErrorsLocalized 校验错误消息随语言切换（v1.2.0 多语言）。
+// 既有中文 want 表在默认源语言（zh-Hans）下不受影响，本用例只覆盖英文模式。
+func TestBuildErrorsLocalized(t *testing.T) {
+	i18n.Init(i18n.LangEn, i18n.LangZh)
+	t.Cleanup(func() { i18n.Init(i18n.LangZh, i18n.LangZh) })
+
+	cases := []struct {
+		name string
+		got  error
+		want string
+	}{
+		{
+			"tdl 路径未设置",
+			func() error { _, err := BuildTest(GlobalFlags{}); return err }(),
+			"Please select the tdl.exe path on the Settings page first",
+		},
+		{
+			"下载缺少输入源",
+			func() error {
+				_, err := BuildDownload(GlobalFlags{TdlPath: "t.exe"}, DownloadArgs{})
+				return err
+			}(),
+			"Provide at least one input source",
+		},
+		{
+			"白黑名单冲突",
+			func() error {
+				_, err := BuildDownload(GlobalFlags{TdlPath: "t.exe"},
+					DownloadArgs{Links: []string{"l"}, Include: "jpg", Exclude: "mp4"})
+				return err
+			}(),
+			"Extension whitelist and blacklist cannot both be filled in",
+		},
+		{
+			"数字字段非法（字段名也须翻译）",
+			func() error {
+				_, err := BuildDownload(GlobalFlags{TdlPath: "t.exe"},
+					DownloadArgs{Links: []string{"l"}, Threads: "abc"})
+				return err
+			}(),
+			"Field Threads per Task must be a positive integer",
+		},
+		{
+			"上传缺少待上传项",
+			func() error {
+				_, err := BuildUpload(GlobalFlags{TdlPath: "t.exe"}, UploadArgs{})
+				return err
+			}(),
+			"Add at least one file or directory to upload",
+		},
+		{
+			"命名空间为空",
+			func() error {
+				_, err := BuildLogin(GlobalFlags{TdlPath: "t.exe"}, LoginArgs{})
+				return err
+			}(),
+			"Please fill in the namespace",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.got == nil {
+				t.Fatal("应返回错误")
+			}
+			if !strings.Contains(tc.got.Error(), tc.want) {
+				t.Fatalf("错误消息未本地化：\n got=%q\nwant 包含 %q", tc.got.Error(), tc.want)
+			}
+		})
 	}
 }

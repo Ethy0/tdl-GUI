@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
+	"tdl-gui/internal/i18n"
 	"tdl-gui/internal/runner"
 )
 
@@ -70,14 +71,14 @@ func NewTaskController(win fyne.Window, log *LogView) *TaskController {
 	c.run.SetOnKillResult(func(ok bool, pid int, detail string) {
 		uiDo(func() {
 			if ok {
-				msg := fmt.Sprintf("已强制终止进程树（PID %d）", pid)
+				msg := i18n.Tf("已强制终止进程树（PID {{.pid}}）", map[string]any{"pid": pid})
 				if detail != "" {
-					msg = fmt.Sprintf("已强制终止进程树（PID %d，%s）", pid, detail)
+					msg = i18n.Tf("已强制终止进程树（PID {{.pid}}，{{.detail}}）", map[string]any{"pid": pid, "detail": detail})
 				}
 				c.log.AppendBanner(msg)
 				return
 			}
-			c.log.AppendError(fmt.Sprintf("终止失败：%s，可再次点击 [中止] 重试", detail))
+			c.log.AppendError(i18n.Tf("终止失败：{{.detail}}，可再次点击 [中止] 重试", map[string]any{"detail": detail}))
 		})
 	})
 	return c
@@ -112,7 +113,7 @@ func (c *TaskController) launch(tdlPath string, args []string, echo string, trig
 
 	c.trigger = trigger
 	c.reset = reset
-	trigger.SetText("中止")
+	trigger.SetText(i18n.T("中止"))
 	trigger.Importance = widget.DangerImportance
 	trigger.OnTapped = func() { c.Abort() }
 	trigger.Refresh()
@@ -126,7 +127,7 @@ func (c *TaskController) launch(tdlPath string, args []string, echo string, trig
 		err = c.run.Start(tdlPath, args, c.onEvent)
 	}
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("启动失败：%w", err), c.win)
+		dialog.ShowError(fmt.Errorf("%s", i18n.Tf("启动失败：{{.err}}", map[string]any{"err": err.Error()})), c.win)
 		c.finish()
 	}
 }
@@ -137,9 +138,9 @@ func (c *TaskController) Abort() {
 		return
 	}
 	if c.abortAsked.CompareAndSwap(false, true) {
-		c.log.AppendError("========= 任务已被用户中止，正在强制终止进程树……=========")
+		c.log.AppendError("========= " + i18n.T("任务已被用户中止，正在强制终止进程树……") + "=========")
 	} else {
-		c.log.AppendError("========= 再次尝试强制终止进程树……=========")
+		c.log.AppendError("========= " + i18n.T("再次尝试强制终止进程树……") + "=========")
 	}
 	c.run.Abort()
 	c.armAbortWatchdog()
@@ -154,8 +155,8 @@ func (c *TaskController) armAbortWatchdog() {
 		}
 		uiDo(func() {
 			if c.busy.Load() && c.run.Running() {
-				c.log.AppendError(fmt.Sprintf(
-					"警告：终止请求已发出 %v 任务仍未退出，可再次点击 [中止] 重试", abortWatchdogDelay))
+				c.log.AppendError(i18n.Tf(
+					"警告：终止请求已发出 {{.d}} 任务仍未退出，可再次点击 [中止] 重试", map[string]any{"d": abortWatchdogDelay}))
 			}
 		})
 	})
@@ -194,14 +195,14 @@ func (c *TaskController) onEvent(ev runner.Event) {
 func (c *TaskController) handleExit(e runner.ExitEvent) {
 	c.log.CommitProgress()
 
-	status, isErr := "正常", false
+	status, isErr := i18n.T("正常"), false
 	switch {
 	case e.Aborted:
-		status, isErr = "已中止", true
+		status, isErr = i18n.T("已中止"), true
 	case e.Code != 0:
-		status, isErr = "失败", true
+		status, isErr = i18n.T("失败"), true
 	}
-	msg := fmt.Sprintf("退出码：%d（%s）", e.Code, status)
+	msg := i18n.Tf("退出码：{{.code}}（{{.status}}）", map[string]any{"code": e.Code, "status": status})
 	if isErr {
 		c.log.AppendError(msg)
 	} else {

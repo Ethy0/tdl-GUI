@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"tdl-gui/internal/cmdgen"
+	"tdl-gui/internal/i18n"
 	"tdl-gui/internal/store"
 )
 
@@ -58,52 +59,52 @@ func newUploadPage(ctx *pageCtx) *uploadPage {
 	)
 	// 待上传路径列表属"任务目标范围"：不持久化，启动时始终为空（见 store.TaskScopeKeys）
 	p.paths = nil
-	p.addFile = widget.NewButton("添加文件…", nil)
-	p.addDir = widget.NewButton("添加目录…", nil)
+	p.addFile = widget.NewButton(i18n.T("添加文件…"), nil)
+	p.addDir = widget.NewButton(i18n.T("添加目录…"), nil)
 
 	p.chatEntry = widget.NewEntry()
-	p.chatEntry.SetPlaceHolder("@iyear / iyear / 123456789 / https://t.me/iyear（留空 = 收藏夹）")
+	p.chatEntry.SetPlaceHolder(i18n.T("@iyear / iyear / 123456789 / https://t.me/iyear（留空 = 收藏夹）"))
 	p.chatEntry.SetText("")
 
 	p.topicEntry = widget.NewEntry()
-	p.topicEntry.SetPlaceHolder("论坛话题 ID（可选，需配合目标聊天）")
+	p.topicEntry.SetPlaceHolder(i18n.T("论坛话题 ID（可选，需配合目标聊天）"))
 	positiveIntEntry(p.topicEntry)
 	p.topicEntry.SetText("")
 
 	p.toEntry = widget.NewEntry()
-	p.toEntry.SetPlaceHolder("消息路由表达式或路由文件路径（与目标聊天/话题互斥；留空 = 不使用）")
+	p.toEntry.SetPlaceHolder(i18n.T("消息路由表达式或路由文件路径（与目标聊天/话题互斥；留空 = 不使用）"))
 	p.toEntry.SetText("")
 	p.toHint = newRedHint()
 
 	p.threadsEntry = widget.NewEntry()
-	p.threadsEntry.SetPlaceHolder("留空 = tdl 默认（4）")
+	p.threadsEntry.SetPlaceHolder(i18n.T("留空 = tdl 默认（4）"))
 	positiveIntEntry(p.threadsEntry)
 	p.threadsEntry.SetText(st.Str(store.KeyUploadThreads, ""))
 
 	p.limitEntry = widget.NewEntry()
-	p.limitEntry.SetPlaceHolder("留空 = tdl 默认（2）")
+	p.limitEntry.SetPlaceHolder(i18n.T("留空 = tdl 默认（2）"))
 	positiveIntEntry(p.limitEntry)
 	p.limitEntry.SetText(st.Str(store.KeyUploadLimit, ""))
 
 	p.captionEntry = widget.NewMultiLineEntry()
-	p.captionEntry.SetPlaceHolder("标题表达式或文件路径（留空 = tdl 默认）")
+	p.captionEntry.SetPlaceHolder(i18n.T("标题表达式或文件路径（留空 = tdl 默认）"))
 	p.captionEntry.SetMinRowsVisible(3)
 	p.captionEntry.SetText(st.Str(store.KeyUploadCaption, ""))
 
 	p.includeEntry = widget.NewEntry()
-	p.includeEntry.SetPlaceHolder("如 jpg,png（留空 = 不限制）")
+	p.includeEntry.SetPlaceHolder(i18n.T("如 jpg,png（留空 = 不限制）"))
 	p.includeEntry.SetText(st.Str(store.KeyUploadInclude, ""))
 	p.excludeEntry = widget.NewEntry()
-	p.excludeEntry.SetPlaceHolder("如 mp4,flv（留空 = 不排除）")
+	p.excludeEntry.SetPlaceHolder(i18n.T("如 mp4,flv（留空 = 不排除）"))
 	p.excludeEntry.SetText(st.Str(store.KeyUploadExclude, ""))
 	p.conflictHint = newRedHint()
 
-	p.rmCheck = widget.NewCheck("上传成功后删除本地文件（--rm，危险）", nil)
+	p.rmCheck = widget.NewCheck(i18n.T("上传成功后删除本地文件（--rm，危险）"), nil)
 	p.rmCheck.SetChecked(st.Bool(store.KeyUploadRM, false))
-	p.photoCheck = widget.NewCheck("图片以照片形式发送（--photo）", nil)
+	p.photoCheck = widget.NewCheck(i18n.T("图片以照片形式发送（--photo）"), nil)
 	p.photoCheck.SetChecked(st.Bool(store.KeyUploadPhoto, false))
 
-	p.startBtn = widget.NewButton("开始", nil)
+	p.startBtn = widget.NewButton(i18n.T("开始"), nil)
 	p.startBtn.Importance = widget.HighImportance
 	p.startHint = newRedHint()
 
@@ -155,22 +156,22 @@ func newUploadPage(ctx *pageCtx) *uploadPage {
 	)
 
 	form := newForm(
-		widget.NewFormItem("待上传文件/目录", pathsBox),
-		widget.NewFormItem("目标聊天", p.chatEntry),
-		widget.NewFormItem("论坛话题 ID", p.topicEntry),
-		widget.NewFormItem("消息路由", container.NewVBox(
+		widget.NewFormItem(i18n.T("待上传文件/目录"), pathsBox),
+		widget.NewFormItem(i18n.T("目标聊天"), p.chatEntry),
+		widget.NewFormItem(i18n.T("论坛话题 ID"), p.topicEntry),
+		widget.NewFormItem(i18n.T("消息路由"), container.NewVBox(
 			p.toEntry,
-			newHint("提示：消息路由与目标聊天/话题互斥，只能二选一；填写消息路由后，另两项将被禁用。"),
+			newHint(i18n.T("提示：消息路由与目标聊天/话题互斥，只能二选一；填写消息路由后，另两项将被禁用。")),
 			p.toHint,
 		)),
-		widget.NewFormItem("每任务线程数", p.threadsEntry),
-		widget.NewFormItem("并发任务数", p.limitEntry),
-		widget.NewFormItem("标题（caption）", p.captionEntry),
-		widget.NewFormItem("扩展名白名单", p.includeEntry),
-		widget.NewFormItem("扩展名黑名单", container.NewVBox(p.excludeEntry, p.conflictHint)),
-		widget.NewFormItem("附加选项", container.NewVBox(
+		widget.NewFormItem(i18n.T("每任务线程数"), p.threadsEntry),
+		widget.NewFormItem(i18n.T("并发任务数"), p.limitEntry),
+		widget.NewFormItem(i18n.T("标题（caption）"), p.captionEntry),
+		widget.NewFormItem(i18n.T("扩展名白名单"), p.includeEntry),
+		widget.NewFormItem(i18n.T("扩展名黑名单"), container.NewVBox(p.excludeEntry, p.conflictHint)),
+		widget.NewFormItem(i18n.T("附加选项"), container.NewVBox(
 			p.rmCheck,
-			newHintColored("警告：勾选 --rm 后，上传成功的本地文件将被删除且不可恢复，执行前会再次确认。", colorLogError),
+			newHintColored(i18n.T("警告：勾选 --rm 后，上传成功的本地文件将被删除且不可恢复，执行前会再次确认。"), colorLogError),
 			p.photoCheck,
 		)),
 	)
@@ -190,7 +191,7 @@ func newUploadPage(ctx *pageCtx) *uploadPage {
 // toPage 组装为导航页。
 func (p *uploadPage) toPage() *Page {
 	return &Page{
-		Name: "上传",
+		Name: i18n.T("上传"),
 		View: p.view,
 		Controls: []fyne.Disableable{
 			p.addFile, p.addDir, p.delPath,
@@ -221,13 +222,13 @@ func (p *uploadPage) refresh() {
 		p.topicEntry.Enable()
 	}
 	if conflictTo {
-		setRedHint(p.toHint, "消息路由与目标聊天/话题互斥，只能二选一")
+		setRedHint(p.toHint, i18n.T("消息路由与目标聊天/话题互斥，只能二选一"))
 	} else {
 		setRedHint(p.toHint, "")
 	}
 
 	if p.includeEntry.Text != "" && p.excludeEntry.Text != "" {
-		setRedHint(p.conflictHint, "扩展名白名单与黑名单不能同时填写")
+		setRedHint(p.conflictHint, i18n.T("扩展名白名单与黑名单不能同时填写"))
 	} else {
 		setRedHint(p.conflictHint, "")
 	}
@@ -244,9 +245,9 @@ func (p *uploadPage) refresh() {
 		p.startBtn.Disable()
 		switch {
 		case conflictTo:
-			reason = "消息路由与目标聊天/话题互斥，只能二选一"
+			reason = i18n.T("消息路由与目标聊天/话题互斥，只能二选一")
 		case p.includeEntry.Text != "" && p.excludeEntry.Text != "":
-			reason = "扩展名白名单与黑名单不能同时填写"
+			reason = i18n.T("扩展名白名单与黑名单不能同时填写")
 		default:
 			reason = firstLine(err)
 		}
@@ -305,7 +306,7 @@ func (p *uploadPage) onStart() {
 	}
 
 	if p.rmCheck.Checked {
-		dialog.ShowConfirm("危险操作确认", "上传成功后将删除本地文件（--rm），此操作不可恢复。确认继续？",
+		dialog.ShowConfirm(i18n.T("危险操作确认"), i18n.T("上传成功后将删除本地文件（--rm），此操作不可恢复。确认继续？"),
 			func(ok bool) {
 				if ok {
 					p.launch(args)
@@ -322,7 +323,7 @@ func (p *uploadPage) launch(args []string) {
 }
 
 func (p *uploadPage) resetStart() {
-	p.startBtn.SetText("开始")
+	p.startBtn.SetText(i18n.T("开始"))
 	p.startBtn.Importance = widget.HighImportance
 	p.startBtn.OnTapped = func() { p.onStart() }
 	p.startBtn.Refresh()

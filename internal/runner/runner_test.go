@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"tdl-gui/internal/i18n"
 )
 
 // 真实子进程冒烟测试（Windows）：启动 → 收集输出 → 退出事件。
@@ -245,5 +247,24 @@ func TestRunnerAbortFailureAndRetry(t *testing.T) {
 	}
 	if got := calls.Load(); got != 2 {
 		t.Fatalf("killTree 应被调用 2 次（首次 + 重试），实际 %d", got)
+	}
+}
+
+// TestBusyErrorLocalized 第二次 Start 的"已有任务正在运行"随语言切换（v1.2.0 多语言）。
+func TestBusyErrorLocalized(t *testing.T) {
+	i18n.Init(i18n.LangEn, i18n.LangZh)
+	t.Cleanup(func() { i18n.Init(i18n.LangZh, i18n.LangZh) })
+
+	r := NewRunner()
+	// 占用运行态（不启动真实进程）：直接占位后调用 Start
+	if !r.running.CompareAndSwap(false, true) {
+		t.Fatal("测试前置条件失败：运行态应可占用")
+	}
+	defer r.running.Store(false)
+
+	if err := r.Start("x", nil, func(Event) {}); err == nil {
+		t.Fatal("运行中再次 Start 应返回错误")
+	} else if !strings.Contains(err.Error(), "A task is already running") {
+		t.Fatalf("错误消息未本地化：%q", err.Error())
 	}
 }

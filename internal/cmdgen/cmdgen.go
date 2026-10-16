@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"tdl-gui/internal/i18n"
 )
 
 // 默认值（与 tdl 0.20.4 实际默认一致：等于默认值时不拼入，语义不变）。
@@ -118,7 +120,9 @@ type LoginArgs struct {
 
 var rangeRe = regexp.MustCompile(`^\d+(,\d+)*$`)
 
-var errTdlPath = errors.New("请先在设置页选择 tdl.exe 路径")
+// errTdlPath 必须惰性构造：包级变量的初始化早于 i18n.Init，
+// 若在此处固化文案，英文模式下会残留中文（方案 §2.4 R-7）。
+func errTdlPath() error { return errors.New(i18n.T("请先在设置页选择 tdl.exe 路径")) }
 
 // BuildGlobal 拼装全局 flags（顺序固定）。withNS=false 时不拼入 -n（如 login -l 场景）。
 func BuildGlobal(g GlobalFlags, withNS bool) []string {
@@ -157,9 +161,9 @@ func BuildGlobal(g GlobalFlags, withNS bool) []string {
 func ValidateGlobal(g GlobalFlags) error {
 	var errs []error
 	if g.TdlPath == "" {
-		errs = append(errs, errTdlPath)
+		errs = append(errs, errTdlPath())
 	}
-	if err := CheckNonNegativeInt("DC 连接池大小", g.Pool); err != nil {
+	if err := CheckNonNegativeInt(i18n.T("DC 连接池大小"), g.Pool); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
@@ -172,7 +176,7 @@ func ValidateRange(s string) error {
 		return nil
 	}
 	if !rangeRe.MatchString(s) {
-		return errors.New("范围格式不正确：应为正整数，或用英文逗号分隔的两个正整数（如 1000,2000）")
+		return errors.New(i18n.T("范围格式不正确：应为正整数，或用英文逗号分隔的两个正整数（如 1000,2000）"))
 	}
 	return nil
 }
@@ -185,7 +189,7 @@ func CheckNonNegativeInt(name, v string) error {
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil || n < 0 {
-		return fmt.Errorf("字段 %s 必须为非负整数（0 表示不限制）", name)
+		return fmt.Errorf("%s", i18n.Tf("字段 {{.name}} 必须为非负整数（0 表示不限制）", map[string]any{"name": name}))
 	}
 	return nil
 }
@@ -197,7 +201,7 @@ func CheckPositiveInt(name, v string) error {
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil || n <= 0 {
-		return fmt.Errorf("字段 %s 必须为正整数", name)
+		return fmt.Errorf("%s", i18n.Tf("字段 {{.name}} 必须为正整数", map[string]any{"name": name}))
 	}
 	return nil
 }
@@ -228,22 +232,22 @@ func BuildDownload(g GlobalFlags, d DownloadArgs) ([]string, error) {
 	files := CleanList(d.JSONFiles)
 
 	if d.Include != "" && d.Exclude != "" {
-		errs = append(errs, errors.New("扩展名白名单与黑名单不能同时填写"))
+		errs = append(errs, errors.New(i18n.T("扩展名白名单与黑名单不能同时填写")))
 	}
 	if len(links)+len(txtLinks)+len(files) == 0 {
-		errs = append(errs, errors.New("请至少提供一种输入源（链接 / txt / JSON）"))
+		errs = append(errs, errors.New(i18n.T("请至少提供一种输入源（链接 / txt / JSON）")))
 	}
 	if n := len(links) + len(txtLinks); n > MaxLinkCount {
-		errs = append(errs, fmt.Errorf("链接数量过多（%d 条），命令行可能超长，请分批执行", n))
+		errs = append(errs, fmt.Errorf("%s", i18n.Tf("链接数量过多（{{.n}} 条），命令行可能超长，请分批执行", map[string]any{"n": n})))
 	}
-	if err := CheckPositiveInt("每任务线程数", d.Threads); err != nil {
+	if err := CheckPositiveInt(i18n.T("每任务线程数"), d.Threads); err != nil {
 		errs = append(errs, err)
 	}
-	if err := CheckPositiveInt("并发任务数", d.Limit); err != nil {
+	if err := CheckPositiveInt(i18n.T("并发任务数"), d.Limit); err != nil {
 		errs = append(errs, err)
 	}
 	if d.Serve {
-		if err := CheckPositiveInt("serve 端口", d.Port); err != nil {
+		if err := CheckPositiveInt(i18n.T("serve 端口"), d.Port); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -319,25 +323,25 @@ func BuildUpload(g GlobalFlags, u UploadArgs) ([]string, error) {
 
 	paths := CleanList(u.Paths)
 	if len(paths) == 0 {
-		errs = append(errs, errors.New("请至少添加一个待上传文件或目录"))
+		errs = append(errs, errors.New(i18n.T("请至少添加一个待上传文件或目录")))
 	}
 	if u.To != "" && (u.Chat != "" || u.Topic != "") {
-		errs = append(errs, errors.New("消息路由与目标聊天/话题互斥，只能二选一"))
+		errs = append(errs, errors.New(i18n.T("消息路由与目标聊天/话题互斥，只能二选一")))
 	}
 	if u.Include != "" && u.Exclude != "" {
-		errs = append(errs, errors.New("扩展名白名单与黑名单不能同时填写"))
+		errs = append(errs, errors.New(i18n.T("扩展名白名单与黑名单不能同时填写")))
 	}
-	if err := CheckPositiveInt("论坛话题 ID", u.Topic); err != nil {
+	if err := CheckPositiveInt(i18n.T("论坛话题 ID"), u.Topic); err != nil {
 		errs = append(errs, err)
 	}
-	if err := CheckPositiveInt("每任务线程数", u.Threads); err != nil {
+	if err := CheckPositiveInt(i18n.T("每任务线程数"), u.Threads); err != nil {
 		errs = append(errs, err)
 	}
-	if err := CheckPositiveInt("并发任务数", u.Limit); err != nil {
+	if err := CheckPositiveInt(i18n.T("并发任务数"), u.Limit); err != nil {
 		errs = append(errs, err)
 	}
 	if u.Topic != "" && u.Chat == "" {
-		errs = append(errs, errors.New("论坛话题 ID 必须与目标聊天同时填写"))
+		errs = append(errs, errors.New(i18n.T("论坛话题 ID 必须与目标聊天同时填写")))
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -388,16 +392,16 @@ func BuildExport(g GlobalFlags, e ExportArgs) ([]string, error) {
 		errs = append(errs, err)
 	}
 
-	if err := CheckPositiveInt("话题 ID", e.Topic); err != nil {
+	if err := CheckPositiveInt(i18n.T("话题 ID"), e.Topic); err != nil {
 		errs = append(errs, err)
 	}
-	if err := CheckPositiveInt("评论区帖子 ID", e.Reply); err != nil {
+	if err := CheckPositiveInt(i18n.T("评论区帖子 ID"), e.Reply); err != nil {
 		errs = append(errs, err)
 	}
 	switch e.Type {
 	case "", ExportTypeTime, ExportTypeID, ExportTypeLast:
 	default:
-		errs = append(errs, fmt.Errorf("导出类型非法：%s", e.Type))
+		errs = append(errs, fmt.Errorf("%s", i18n.Tf("导出类型非法：{{.t}}", map[string]any{"t": e.Type})))
 	}
 	if err := ValidateRange(e.Range); err != nil {
 		errs = append(errs, err)
@@ -446,15 +450,15 @@ func BuildExport(g GlobalFlags, e ExportArgs) ([]string, error) {
 func BuildLogin(g GlobalFlags, l LoginArgs) ([]string, error) {
 	var errs []error
 	if g.TdlPath == "" {
-		errs = append(errs, errTdlPath)
+		errs = append(errs, errTdlPath())
 	}
 	ns := strings.TrimSpace(l.NS)
 	if ns == "" {
-		errs = append(errs, errors.New("请填写命名空间"))
+		errs = append(errs, errors.New(i18n.T("请填写命名空间")))
 	} else if strings.ContainsAny(ns, " \t\r\n") {
-		errs = append(errs, errors.New("命名空间不能包含空白字符"))
+		errs = append(errs, errors.New(i18n.T("命名空间不能包含空白字符")))
 	}
-	if err := CheckNonNegativeInt("DC 连接池大小", g.Pool); err != nil {
+	if err := CheckNonNegativeInt(i18n.T("DC 连接池大小"), g.Pool); err != nil {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {

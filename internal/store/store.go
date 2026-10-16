@@ -90,6 +90,9 @@ const (
 	KeySettingsDebug             = "settings.debug"
 	KeySettingsDisableProgressPS = "settings.disableProgressPS"
 	KeySettingsStorage           = "settings.storage"
+	// KeySettingsLang 界面语言偏好："" = 跟随系统；"zh-Hans"；"en"。
+	// 不属于任务目标范围，需持久化；改动后重启应用生效（v1.2.0 方法 A）。
+	KeySettingsLang = "settings.lang"
 
 	KeyDownloadLinks      = "download.links"
 	KeyDownloadTxtPath    = "download.txtPath"

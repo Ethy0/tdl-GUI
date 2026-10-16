@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -11,34 +10,71 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"tdl-gui/internal/cmdgen"
+	"tdl-gui/internal/i18n"
 	"tdl-gui/internal/store"
 	"tdl-gui/internal/txtload"
 )
 
 // txtCountHintDefault 是 txt 批量导入区未选择文件时的说明文案（清空列表后恢复为它）。
-const txtCountHintDefault = "txt 文件中每行一个链接，空行与 # 开头的注释行会被跳过"
+// 文案随语言变化，故为函数而非常量。
+func txtCountHintDefault() string {
+	return i18n.T("txt 文件中每行一个链接，空行与 # 开头的注释行会被跳过")
+}
 
-// 断点策略单选项（映射 cmdgen.Resume*）。
-var resumeLabels = []string{"默认（无附加参数）", "续传（--continue）", "重新开始（--restart）"}
+// resumeKeys 是断点策略单选项的翻译键（映射 cmdgen.Resume*）。
+// 数组顺序即协议：索引 0=默认 1=续传 2=重新开始；与 cmdgen 常量的对应关系集中在
+// resumeValueFromIndex / resumeIndexFromValue 两个函数中（禁止用显示文本反查）。
+var resumeKeys = []string{"默认（无附加参数）", "续传（--continue）", "重新开始（--restart）"}
 
-func resumeValue(label string) string {
-	switch label {
-	case resumeLabels[1]:
+// resumeLabelOptions 返回当前语言下的断点策略选项文本。
+func resumeLabelOptions() []string {
+	out := make([]string, 0, len(resumeKeys))
+	for _, k := range resumeKeys {
+		out = append(out, i18n.T(k))
+	}
+	return out
+}
+
+// resumeLabelAt 返回某个索引对应的显示文本（用于按值回显）。
+func resumeLabelAt(i int) string {
+	if i < 0 || i >= len(resumeKeys) {
+		i = 0
+	}
+	return i18n.T(resumeKeys[i])
+}
+
+// resumeIndexFromOptions 在当前选项列表中反查选中项索引。
+// 比较对象是控件自身的 Options（同一语言下的同一份文本），故不受翻译影响；
+// 禁止改为与包级硬编码文本数组比较（那会随语言变化而错位）。
+func resumeIndexFromOptions(options []string, selected string) int {
+	for i, o := range options {
+		if o == selected {
+			return i
+		}
+	}
+	return 0
+}
+
+// resumeValueFromIndex 把 radio 选中索引转为 cmdgen 断点策略值。
+func resumeValueFromIndex(i int) string {
+	switch i {
+	case 1:
 		return cmdgen.ResumeContinue
-	case resumeLabels[2]:
+	case 2:
 		return cmdgen.ResumeRestart
 	}
 	return cmdgen.ResumeDefault
 }
 
-func resumeLabel(v string) string {
+// resumeIndexFromValue 把 cmdgen 断点策略值转为 radio 选中索引。
+func resumeIndexFromValue(v string) int {
 	switch v {
 	case cmdgen.ResumeContinue:
-		return resumeLabels[1]
+		return 1
 	case cmdgen.ResumeRestart:
-		return resumeLabels[2]
+		return 2
 	}
-	return resumeLabels[0]
+	return 0
 }
 
 type downloadPage struct {
@@ -90,14 +126,14 @@ func newDownloadPage(ctx *pageCtx) *downloadPage {
 
 	// ---- 创建控件 ----
 	p.linksEntry = widget.NewMultiLineEntry()
-	p.linksEntry.SetPlaceHolder("每行一个链接，例如：\nhttps://t.me/telegram/193\nhttps://t.me/c/1697797156/151\nhttps://t.me/iFreeKnow/45662/55005")
+	p.linksEntry.SetPlaceHolder(i18n.T("每行一个链接，例如：\nhttps://t.me/telegram/193\nhttps://t.me/c/1697797156/151\nhttps://t.me/iFreeKnow/45662/55005"))
 	p.linksEntry.SetMinRowsVisible(4)
 	// 消息链接属"任务目标范围"：不持久化，启动时始终为空（见 store.TaskScopeKeys）
 	p.linksEntry.SetText("")
 
-	p.txtBtn = widget.NewButton("选择 txt 文件…", nil)
-	p.txtPathLbl = widget.NewLabel("未选择文件")
-	p.txtCountLbl = newHint(txtCountHintDefault)
+	p.txtBtn = widget.NewButton(i18n.T("选择 txt 文件…"), nil)
+	p.txtPathLbl = widget.NewLabel(i18n.T("未选择文件"))
+	p.txtCountLbl = newHint(txtCountHintDefault())
 
 	p.jsonList, p.jsonDel = newPathListView(
 		func() []string { return p.jsonFiles },
@@ -106,61 +142,61 @@ func newDownloadPage(ctx *pageCtx) *downloadPage {
 		func() { p.removeJSON() },
 		func() bool { return ctx.ctrl.Running() }, // 执行期间不接受选中（widget.List 不可 Disable）
 	)
-	p.jsonAdd = widget.NewButton("添加 JSON…", nil)
+	p.jsonAdd = widget.NewButton(i18n.T("添加 JSON…"), nil)
 	// JSON 文件列表属"任务目标范围"：不持久化，启动时始终为空
 	p.jsonFiles = nil
 
 	p.dirEntry = newReadOnlyEntry()
 	p.dirEntry.SetText(st.Str(store.KeyDownloadDir, ""))
-	p.dirBtn = widget.NewButton("浏览…", nil)
+	p.dirBtn = widget.NewButton(i18n.T("浏览…"), nil)
 
 	p.threadsEntry = widget.NewEntry()
-	p.threadsEntry.SetPlaceHolder("留空 = tdl 默认（4）")
+	p.threadsEntry.SetPlaceHolder(i18n.T("留空 = tdl 默认（4）"))
 	positiveIntEntry(p.threadsEntry)
 	p.threadsEntry.SetText(st.Str(store.KeyDownloadThreads, ""))
 
 	p.limitEntry = widget.NewEntry()
-	p.limitEntry.SetPlaceHolder("留空 = tdl 默认（2）")
+	p.limitEntry.SetPlaceHolder(i18n.T("留空 = tdl 默认（2）"))
 	positiveIntEntry(p.limitEntry)
 	p.limitEntry.SetText(st.Str(store.KeyDownloadLimit, ""))
 
-	p.descCheck = widget.NewCheck("降序下载（最新 → 最旧）", nil)
+	p.descCheck = widget.NewCheck(i18n.T("降序下载（最新 → 最旧）"), nil)
 	p.descCheck.SetChecked(st.Bool(store.KeyDownloadDesc, false))
-	p.rewriteCheck = widget.NewCheck("按文件头 MIME 重写扩展名（--rewrite-ext）", nil)
+	p.rewriteCheck = widget.NewCheck(i18n.T("按文件头 MIME 重写扩展名（--rewrite-ext）"), nil)
 	p.rewriteCheck.SetChecked(st.Bool(store.KeyDownloadRewriteExt, false))
-	p.groupCheck = widget.NewCheck("自动下载相册/分组消息（--group）", nil)
+	p.groupCheck = widget.NewCheck(i18n.T("自动下载相册/分组消息（--group）"), nil)
 	p.groupCheck.SetChecked(st.Bool(store.KeyDownloadGroup, false))
-	p.skipCheck = widget.NewCheck("跳过同名且同大小的文件（--skip-same）", nil)
+	p.skipCheck = widget.NewCheck(i18n.T("跳过同名且同大小的文件（--skip-same）"), nil)
 	p.skipCheck.SetChecked(st.Bool(store.KeyDownloadSkipSame, false))
-	p.takeoutCheck = widget.NewCheck("使用 Takeout 会话（--takeout）", nil)
+	p.takeoutCheck = widget.NewCheck(i18n.T("使用 Takeout 会话（--takeout）"), nil)
 	p.takeoutCheck.SetChecked(st.Bool(store.KeyDownloadTakeout, false))
 
 	p.includeEntry = widget.NewEntry()
-	p.includeEntry.SetPlaceHolder("如 jpg,png（留空 = 不限制）")
+	p.includeEntry.SetPlaceHolder(i18n.T("如 jpg,png（留空 = 不限制）"))
 	p.includeEntry.SetText(st.Str(store.KeyDownloadInclude, ""))
 	p.excludeEntry = widget.NewEntry()
-	p.excludeEntry.SetPlaceHolder("如 mp4,flv（留空 = 不排除）")
+	p.excludeEntry.SetPlaceHolder(i18n.T("如 mp4,flv（留空 = 不排除）"))
 	p.excludeEntry.SetText(st.Str(store.KeyDownloadExclude, ""))
 	p.conflictHint = newRedHint()
 
 	p.templateEntry = widget.NewEntry()
-	p.templateEntry.SetPlaceHolder(`如 {{ .DialogID }}_{{ .MessageID }}_{{ .FileName }}（留空 = tdl 默认）`)
+	p.templateEntry.SetPlaceHolder(i18n.T(`如 {{ .DialogID }}_{{ .MessageID }}_{{ .FileName }}（留空 = tdl 默认）`))
 	p.templateEntry.SetText(st.Str(store.KeyDownloadTemplate, ""))
 
-	p.resumeRadio = widget.NewRadioGroup(resumeLabels, nil)
+	p.resumeRadio = widget.NewRadioGroup(resumeLabelOptions(), nil)
 	p.resumeRadio.Horizontal = true
-	p.resumeRadio.SetSelected(resumeLabel(st.Str(store.KeyDownloadResume, cmdgen.ResumeDefault)))
+	p.resumeRadio.SetSelected(resumeLabelAt(resumeIndexFromValue(st.Str(store.KeyDownloadResume, cmdgen.ResumeDefault))))
 
-	p.serveCheck = widget.NewCheck("serve 模式（以 HTTP 服务方式提供文件而非下载）", nil)
+	p.serveCheck = widget.NewCheck(i18n.T("serve 模式（以 HTTP 服务方式提供文件而非下载）"), nil)
 	p.serveCheck.SetChecked(st.Bool(store.KeyDownloadServe, false))
 	p.portEntry = widget.NewEntry()
 	p.portEntry.SetPlaceHolder(cmdgen.DefaultPort)
 	positiveIntEntry(p.portEntry)
 	p.portEntry.SetText(st.Str(store.KeyDownloadPort, cmdgen.DefaultPort))
 
-	p.startBtn = widget.NewButton("开始", nil)
+	p.startBtn = widget.NewButton(i18n.T("开始"), nil)
 	p.startBtn.Importance = widget.HighImportance
-	p.clearBtn = widget.NewButton("清空列表", nil)
+	p.clearBtn = widget.NewButton(i18n.T("清空列表"), nil)
 	p.startHint = newRedHint()
 
 	// ---- 事件绑定（在恢复初值之后，避免无谓写入）----
@@ -197,7 +233,10 @@ func newDownloadPage(ctx *pageCtx) *downloadPage {
 		p.refresh()
 	}
 	p.templateEntry.OnChanged = func(s string) { st.SetStr(store.KeyDownloadTemplate, s) }
-	p.resumeRadio.OnChanged = func(label string) { st.SetStr(store.KeyDownloadResume, resumeValue(label)) }
+	p.resumeRadio.OnChanged = func(label string) {
+		// 索引即协议：不得用显示文本直接匹配 cmdgen 常量（翻译后文本随语言变化）
+		st.SetStr(store.KeyDownloadResume, resumeValueFromIndex(resumeIndexFromOptions(p.resumeRadio.Options, p.resumeRadio.Selected)))
+	}
 	p.serveCheck.OnChanged = func(v bool) {
 		st.SetBool(store.KeyDownloadServe, v)
 		p.refresh()
@@ -224,26 +263,26 @@ func newDownloadPage(ctx *pageCtx) *downloadPage {
 	dirBox := container.NewBorder(nil, nil, nil, p.dirBtn, p.dirEntry)
 
 	form := newForm(
-		widget.NewFormItem("消息链接", p.linksEntry),
-		widget.NewFormItem("txt 批量导入", txtBox),
-		widget.NewFormItem("导出 JSON 文件", jsonBox),
-		widget.NewFormItem("下载目录", dirBox),
-		widget.NewFormItem("每任务线程数", p.threadsEntry),
-		widget.NewFormItem("并发任务数", p.limitEntry),
-		widget.NewFormItem("附加选项", container.NewVBox(
+		widget.NewFormItem(i18n.T("消息链接"), p.linksEntry),
+		widget.NewFormItem(i18n.T("txt 批量导入"), txtBox),
+		widget.NewFormItem(i18n.T("导出 JSON 文件"), jsonBox),
+		widget.NewFormItem(i18n.T("下载目录"), dirBox),
+		widget.NewFormItem(i18n.T("每任务线程数"), p.threadsEntry),
+		widget.NewFormItem(i18n.T("并发任务数"), p.limitEntry),
+		widget.NewFormItem(i18n.T("附加选项"), container.NewVBox(
 			p.descCheck,
 			p.rewriteCheck,
 			p.groupCheck,
 			p.skipCheck,
 			p.takeoutCheck,
-			newHint("提示：--rewrite-ext 会按文件头 MIME 重写扩展名（如 .apk 可能被改名为 .zip）；--takeout 可降低大量下载时的 flood wait。"),
+			newHint(i18n.T("提示：--rewrite-ext 会按文件头 MIME 重写扩展名（如 .apk 可能被改名为 .zip）；--takeout 可降低大量下载时的 flood wait。")),
 		)),
-		widget.NewFormItem("扩展名白名单", p.includeEntry),
-		widget.NewFormItem("扩展名黑名单", container.NewVBox(p.excludeEntry, p.conflictHint)),
-		widget.NewFormItem("文件名模板", p.templateEntry),
-		widget.NewFormItem("断点策略", container.NewVBox(p.resumeRadio, newHint("提示：tdl 在默认模式下检测到未完成任务会交互询问，而 GUI 子进程无法输入，请显式选择续传或重新开始。"))),
-		widget.NewFormItem("serve 模式", p.serveCheck),
-		widget.NewFormItem("serve 端口", p.portEntry),
+		widget.NewFormItem(i18n.T("扩展名白名单"), p.includeEntry),
+		widget.NewFormItem(i18n.T("扩展名黑名单"), container.NewVBox(p.excludeEntry, p.conflictHint)),
+		widget.NewFormItem(i18n.T("文件名模板"), p.templateEntry),
+		widget.NewFormItem(i18n.T("断点策略"), container.NewVBox(p.resumeRadio, newHint(i18n.T("提示：tdl 在默认模式下检测到未完成任务会交互询问，而 GUI 子进程无法输入，请显式选择续传或重新开始。")))),
+		widget.NewFormItem(i18n.T("serve 模式"), p.serveCheck),
+		widget.NewFormItem(i18n.T("serve 端口"), p.portEntry),
 	)
 
 	content := container.NewBorder(
@@ -261,7 +300,7 @@ func newDownloadPage(ctx *pageCtx) *downloadPage {
 // toPage 组装为导航页。
 func (p *downloadPage) toPage() *Page {
 	return &Page{
-		Name: "下载",
+		Name: i18n.T("下载"),
 		View: p.view,
 		Controls: []fyne.Disableable{
 			p.linksEntry, p.txtBtn,
@@ -284,13 +323,13 @@ func (p *downloadPage) toPage() *Page {
 func (p *downloadPage) clearTaskInputs() {
 	p.linksEntry.SetText("")
 	p.txtLinks = nil
-	p.txtPathLbl.SetText("未选择文件")
-	p.txtCountLbl.SetText(txtCountHintDefault)
+	p.txtPathLbl.SetText(i18n.T("未选择文件"))
+	p.txtCountLbl.SetText(txtCountHintDefault())
 	p.jsonFiles = nil
 	p.jsonSel = -1
 	p.jsonList.UnselectAll()
 	p.jsonList.Refresh()
-	p.ctx.log.AppendBanner("已清空：消息链接、txt 导入、JSON 文件列表")
+	p.ctx.log.AppendBanner(i18n.T("已清空：消息链接、txt 导入、JSON 文件列表"))
 	p.refresh()
 }
 
@@ -301,7 +340,7 @@ func (p *downloadPage) refresh() {
 	}
 	conflict := p.includeEntry.Text != "" && p.excludeEntry.Text != ""
 	if conflict {
-		setRedHint(p.conflictHint, "扩展名白名单与黑名单不能同时填写")
+		setRedHint(p.conflictHint, i18n.T("扩展名白名单与黑名单不能同时填写"))
 	} else {
 		setRedHint(p.conflictHint, "")
 	}
@@ -334,7 +373,7 @@ func (p *downloadPage) refresh() {
 
 // logTxt 在日志中列出 txt 链接清单。
 func (p *downloadPage) logTxt(prefix, path string, links []string) {
-	p.ctx.log.AppendBanner(fmt.Sprintf("%s：%s（已解析 %d 条链接）", prefix, path, len(links)))
+	p.ctx.log.AppendBanner(i18n.Tf("{{.prefix}}：{{.path}}（已解析 {{.n}} 条链接）", map[string]any{"prefix": prefix, "path": path, "n": len(links)}))
 	for _, l := range links {
 		p.ctx.log.AppendLine("    " + l)
 	}
@@ -347,14 +386,14 @@ func (p *downloadPage) onStart() {
 		return
 	}
 	for _, l := range cmdgen.SuspiciousLinks(links) {
-		p.ctx.log.AppendBanner("警告：链接格式可能不受支持：" + l)
+		p.ctx.log.AppendBanner(i18n.Tf("警告：链接格式可能不受支持：{{.l}}", map[string]any{"l": l}))
 	}
 	tp := p.ctx.tdlPath()
 	p.ctx.ctrl.Launch(tp, args, cmdgen.EchoString(tp, args), p.startBtn, p.resetStart)
 }
 
 func (p *downloadPage) resetStart() {
-	p.startBtn.SetText("开始")
+	p.startBtn.SetText(i18n.T("开始"))
 	p.startBtn.Importance = widget.HighImportance
 	p.startBtn.OnTapped = func() { p.onStart() }
 	p.startBtn.Refresh()
@@ -376,7 +415,7 @@ func (p *downloadPage) buildArgs() ([]string, []string, error) {
 		Include:    strings.TrimSpace(p.includeEntry.Text),
 		Exclude:    strings.TrimSpace(p.excludeEntry.Text),
 		Template:   p.templateEntry.Text,
-		Resume:     resumeValue(p.resumeRadio.Selected),
+		Resume:     resumeValueFromIndex(resumeIndexFromOptions(p.resumeRadio.Options, p.resumeRadio.Selected)),
 		Serve:      p.serveCheck.Checked,
 		Port:       p.portEntry.Text,
 	}
@@ -394,14 +433,14 @@ func (p *downloadPage) pickTxt() {
 		p.txtPathLbl.SetText(path)
 		if err != nil {
 			p.txtLinks = nil
-			p.txtCountLbl.SetText("txt 解析失败，请重新选择文件")
-			p.ctx.log.AppendError("txt 解析失败：" + err.Error())
+			p.txtCountLbl.SetText(i18n.T("txt 解析失败，请重新选择文件"))
+			p.ctx.log.AppendError(i18n.Tf("txt 解析失败：{{.err}}", map[string]any{"err": err.Error()}))
 			p.refresh()
 			return
 		}
 		p.txtLinks = links
-		p.txtCountLbl.SetText(fmt.Sprintf("已解析 %d 条链接", len(links)))
-		p.logTxt("txt 批量导入", path, links)
+		p.txtCountLbl.SetText(i18n.Tf("已解析 {{.n}} 条链接", map[string]any{"n": len(links)}))
+		p.logTxt(i18n.T("txt 批量导入"), path, links)
 		p.refresh()
 	})
 }

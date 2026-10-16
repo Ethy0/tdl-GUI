@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/mattn/go-runewidth"
+
+	"tdl-gui/internal/i18n"
 )
 
 const (
@@ -104,15 +106,15 @@ func NewLogView(a fyne.App) *LogView {
 	// 双向滚动：水平最小尺寸不随内容增长，日志内容永不影响主窗口宽度（D-13 兜底）。
 	l.scroll = container.NewScroll(container.NewStack(bg, l.grid))
 
-	l.auto = widget.NewCheck("自动滚动", func(bool) {
+	l.auto = widget.NewCheck(i18n.T("自动滚动"), func(bool) {
 		l.mu.Lock()
 		defer l.mu.Unlock()
 		l.autoScroll()
 	})
 	l.auto.SetChecked(true)
 
-	copyBtn := widget.NewButton("复制全部", func() { l.CopyAll() })
-	clearBtn := widget.NewButton("清空", func() { l.Clear() })
+	copyBtn := widget.NewButton(i18n.T("复制全部"), func() { l.CopyAll() })
+	clearBtn := widget.NewButton(i18n.T("清空"), func() { l.Clear() })
 	toolbar := container.NewHBox(l.auto, copyBtn, clearBtn)
 
 	l.view = container.NewBorder(toolbar, nil, nil, nil, l.scroll)

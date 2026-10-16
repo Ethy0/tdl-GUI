@@ -16,6 +16,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"tdl-gui/internal/cmdgen"
+	"tdl-gui/internal/i18n"
 	"tdl-gui/internal/store"
 )
 
@@ -147,7 +148,7 @@ func Build(a fyne.App, version string) fyne.Window {
 			win.Close()
 			return
 		}
-		dialog.ShowConfirm("任务运行中", "关闭窗口将强制终止任务，确认？", func(ok bool) {
+		dialog.ShowConfirm(i18n.T("任务运行中"), i18n.T("关闭窗口将强制终止任务，确认？"), func(ok bool) {
 			if !ok {
 				return
 			}
@@ -159,8 +160,8 @@ func Build(a fyne.App, version string) fyne.Window {
 	// 首次启动引导
 	if ctx.tdlPath() == "" {
 		app.show(pageSettings)
-		logv.AppendBanner("首次使用：请在设置页选择 tdl.exe 路径")
-		logv.AppendBanner("提示：tdl.exe 需自行准备（可从 https://github.com/iyear/tdl 获取）")
+		logv.AppendBanner(i18n.T("首次使用：请在设置页选择 tdl.exe 路径"))
+		logv.AppendBanner(i18n.T("提示：tdl.exe 需自行准备（可从 https://github.com/iyear/tdl 获取）"))
 	} else {
 		app.show(pageDownload)
 	}
@@ -241,7 +242,7 @@ func positiveIntEntry(e *widget.Entry) {
 		}
 		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil || n <= 0 {
-			return errors.New("必须为正整数")
+			return errors.New(i18n.T("必须为正整数"))
 		}
 		return nil
 	}
@@ -256,7 +257,7 @@ func nonNegativeIntEntry(e *widget.Entry) {
 		}
 		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil || n < 0 {
-			return errors.New("必须为非负整数")
+			return errors.New(i18n.T("必须为非负整数"))
 		}
 		return nil
 	}
@@ -390,7 +391,7 @@ func newPathListView(items func() []string, selected func() int, onSelect func(i
 	locked func() bool) (*widget.List, *widget.Button) {
 	list := widget.NewList(
 		func() int { return len(items()) },
-		func() fyne.CanvasObject { return widget.NewLabel("模板") },
+		func() fyne.CanvasObject { return widget.NewLabel(i18n.T("模板")) },
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			all := items()
 			if i < 0 || i >= len(all) {
@@ -399,7 +400,7 @@ func newPathListView(items func() []string, selected func() int, onSelect func(i
 			o.(*widget.Label).SetText(all[i])
 		},
 	)
-	del := widget.NewButton("移除选中", func() { onRemove() })
+	del := widget.NewButton(i18n.T("移除选中"), func() { onRemove() })
 	del.Disable()
 	list.OnSelected = func(id widget.ListItemID) {
 		if locked != nil && locked() {
