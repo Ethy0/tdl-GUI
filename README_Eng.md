@@ -46,6 +46,11 @@ This project reimplements none of tdl's functionality. It does exactly two thing
 
 ## Quick Start
 
+**Runtime requirements** :
+
+- **Windows 10 / Windows Server 2016 or later (64-bit)**
+- **A graphics driver supporting OpenGL 2.0 or higher**
+
 ### 1. Prepare tdl.exe
 
 Download the Windows build from <https://github.com/iyear/tdl/releases> and extract it to any directory (version 0.20.4, or something close to it, is recommended).

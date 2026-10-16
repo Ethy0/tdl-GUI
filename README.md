@@ -46,6 +46,11 @@
 
 ## 快速使用
 
+**运行环境要求** ：
+
+- **Windows 10 / Windows Server 2016 或更高版本（64 位）**
+- **显卡驱动需支持 OpenGL 2.0 或更高版本**
+
 ### 1. 准备 tdl.exe
 
 从 <https://github.com/iyear/tdl/releases> 下载 Windows 版本并解压到任意目录（推荐使用 0.20.4 或与之接近的版本）。
